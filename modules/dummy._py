@@ -1,0 +1,45 @@
+from deadbeef_modules import ipv6module
+
+from scapy.all import *
+
+# a dummy module for interested developers
+
+# class naming convention: ipv6_<name of the module>_module
+class ipv6_dummy_module(ipv6module):
+    """
+    This modules does nothing. Just showing how to write a module for deadbeef
+    """
+    
+    # overwrite class variables
+    def init_module(self):
+        self.prompt = self.cc.prompt(self.prompt, "dummy")       
+        self.valid_parameters = ["dummy1", "dummy2"]
+        self.help_parameters['dummy1'] = "first dummy parameter"
+        self.help_parameters['dummy2'] = "second dummy parameter"        
+        self.required_parameters = ["dummy1"]
+
+    # help for this modle (what is it doing?)
+    def help(self):
+        print "this is some helpfull text for the dummy module"
+        
+    # start module execution (main module code goes here)
+    def start(self, cmdline):
+        # send an icmpv6 echo request to the address specified with "dummy1"
+        icmpv6_packet = IPv6(dst=self.parameters['dummy1'])/ICMPv6EchoRequest()
+        ans=sr1(icmpv6_packet, timeout=3, verbose=0)
+
+        # do something with the answer packet...
+        if ans:
+            self.cc.ok("got answer!")
+
+        # if the (optional) parameter dummy2 is set, run this module in background, loggin to the internal module buffer
+        if "dummy2" not in self.parameters.keys():
+            arguments = {'loop': 1, 'inter': int(self.parameters['dummy2']), 'verbose': 0}
+            self.add_job(cmd = send, args = (icmpv6_packet, ), kwargs = arguments)                      
+            self.log("started sending packets in background...")
+
+    # stop the module if it is running in background
+    def stop(self, cmdline):
+        self.cc.ok("stopping router advertisement server...\n")     
+        
+        self.kill_job()
